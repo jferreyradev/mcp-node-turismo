@@ -1,0 +1,33 @@
+{
+  "name": "mcp-node-turismo",
+  "version": "1.0.0",
+  "description": "Servidor Model Context Protocol (MCP) en Node.js para la API de Turismo de Tucumán",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "turismo-mcp": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "start:http": "node src/index.js --http 3000",
+    "stats": "node src/stats.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "turismo",
+    "tucuman",
+    "ai",
+    "llm",
+    "claude",
+    "gemini",
+    "cursor"
+  ],
+  "author": "jferreyradev",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.7"
+  }
+}

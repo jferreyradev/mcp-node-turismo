@@ -1,0 +1,1987 @@
+openapi: 3.0.3
+info:
+  title: API Turismo (Clean Architecture)
+  version: 1.0.0
+  description: |
+    API REST de Turismo desarrollada en **PHP Puro compatible con PHP 7.4 y PHP 8.x** bajo **Clean Architecture**.
+    Permite consultar catálogos oficiales, eventos culturales, alojamientos hoteleros, prestadores, gastronomía, destinos, circuitos y contenido institucional.
+    
+    ### Características Clave:
+    - **Soporte de Aliases Legibles y Parámetros Canónicos**: Todos los parámetros de consulta admiten tanto su alias amigable (ej: `localidad`, `limite`) como su parámetro canónico (`p_codigo_localidad`, `p_limit`).
+    - **Normalización de Agregados**: Los campos `telefonos` y `servicios` son serializados automáticamente como listas (`array`) nativas en JSON.
+    - **Rutas Duales**: Se admiten tanto rutas bajo el prefijo tradicional `/api/v1/...` como rutas directas en subdominios dedicados `/v1/...`.
+    - **Respuestas JSON Consistentes**: Envoltura homogénea con `{"success": true, "data": [...]}` en operaciones exitosas y estructuras de error tipadas en códigos 4xx/5xx.
+servers:
+  - url: http://api.tucumanturismo.gob.ar
+    description: Servidor de Producción Oficial
+  - url: http://127.0.0.1:8080
+    description: Servidor Local de Desarrollo (Puerto 8080)
+  - url: http://localhost:8000
+    description: Servidor Local de Desarrollo (Puerto 8000)
+
+tags:
+  - name: Health
+    description: Disponibilidad, chequeo de salud y monitoreo de infraestructura
+  - name: Autenticación
+    description: Inicio de sesión y generación de tokens JWT
+  - name: Usuarios
+    description: Información y perfil del usuario autenticado
+  - name: Catálogos
+    description: Tablas maestras y catálogos base del sistema
+  - name: Eventos
+    description: Agenda, eventos y festivales turísticos
+  - name: Hoteles
+    description: Alojamientos y establecimientos hoteleros
+  - name: Prestadores
+    description: Prestadores habilitados de servicios turísticos
+  - name: Destinos
+    description: Atractivos y destinos provinciales
+  - name: Gastronomía
+    description: Locales gastronómicos y comercios adheridos al programa TucMesa
+  - name: Agencias
+    description: Agencias oficiales de viajes y turismo
+  - name: Guías
+    description: Guías profesionales de turismo
+  - name: Contenido Institucional
+    description: Secciones, subsecciones y artículos informativos
+  - name: Lugares
+    description: Puntos de interés y sitios turísticos de la provincia
+
+paths:
+  # ==========================================
+  # 1. HEALTHCHECK
+  # ==========================================
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Comprobación de disponibilidad (Healthcheck)
+      description: Permite a balanceadores de carga, proxies y herramientas de monitoreo verificar el estado del servicio y la versión de PHP en ejecución.
+      responses:
+        '200':
+          description: Servicio online y operativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Comprobación de disponibilidad (con prefijo /api)
+      description: Variante con prefijo `/api` del chequeo de disponibilidad.
+      responses:
+        '200':
+          description: Servicio online y operativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ==========================================
+  # 2. AUTENTICACIÓN Y PERFIL
+  # ==========================================
+  /api/auth/login:
+    post:
+      tags:
+        - Autenticación
+      summary: Iniciar sesión de usuario (Login)
+      description: Autentica credenciales y emite un token JWT firmado con HMAC-SHA256 con vigencia de 1 hora.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Credenciales incompletas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorAuthBadRequest'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorAuthUnauthorized'
+
+  /auth/login:
+    post:
+      tags:
+        - Autenticación
+      summary: Iniciar sesión de usuario (Ruta directa)
+      description: Endpoint de login accesible directamente sin prefijo `/api`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación exitosa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Credenciales incompletas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorAuthBadRequest'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorAuthUnauthorized'
+
+  /api/users/profile:
+    get:
+      tags:
+        - Usuarios
+      summary: Consultar perfil del usuario autenticado
+      description: Obtiene la información del usuario contenida en el token JWT. Requiere cabecera Bearer Token.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Acceso autorizado al perfil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Token no proporcionado o formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorUnauthorizedResponse'
+        '403':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorForbiddenResponse'
+
+  /users/profile:
+    get:
+      tags:
+        - Usuarios
+      summary: Consultar perfil del usuario (Ruta directa)
+      description: Variante directa de consulta de perfil sin prefijo `/api`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Acceso autorizado al perfil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Token no proporcionado o formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorUnauthorizedResponse'
+        '403':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorForbiddenResponse'
+
+  # ==========================================
+  # 3. CATÁLOGOS BASE
+  # ==========================================
+  /api/v1/localidades:
+    get:
+      tags:
+        - Catálogos
+      summary: Listar todas las localidades
+      description: Devuelve el catálogo oficial de localidades de la provincia con código hash de 32 caracteres, nombre y código postal.
+      responses:
+        '200':
+          description: Listado de localidades obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Localidad'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/circuitos:
+    get:
+      tags:
+        - Catálogos
+      summary: Listar circuitos turísticos
+      description: Devuelve los circuitos turísticos oficiales provinciales. Este recurso cuenta con TTL 0 (siempre fresco, sin almacenamiento en caché).
+      responses:
+        '200':
+          description: Listado de circuitos obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Circuito'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/hoteles-categorias:
+    get:
+      tags:
+        - Hoteles
+      summary: Listar categorías de hoteles y alojamientos
+      description: Devuelve las categorías habilitadas de hospedaje (estrellas, aparts, hostales, cabañas).
+      responses:
+        '200':
+          description: Listado de categorías de hoteles obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategoriaHotel'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/eventos-categorias:
+    get:
+      tags:
+        - Eventos
+      summary: Listar categorías temáticas de eventos
+      description: Devuelve las categorías temáticas de agenda y festivales (culturales, deportivos, gastronómicos).
+      responses:
+        '200':
+          description: Listado de categorías de eventos obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategoriaEvento'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/eventos-subcategorias:
+    get:
+      tags:
+        - Eventos
+      summary: Listar subcategorías de eventos
+      description: Devuelve las subcategorías temáticas. Permite filtrar opcionalmente por una categoría padre específica.
+      parameters:
+        - $ref: '#/components/parameters/ParamCategoria'
+      responses:
+        '200':
+          description: Listado de subcategorías de eventos obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SubcategoriaEvento'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/prestadores-tipos:
+    get:
+      tags:
+        - Prestadores
+      summary: Listar tipos de prestadores turísticos
+      description: Devuelve los tipos habilitados de prestadores de actividades turísticas (turismo aventura, agencias receptivas, etc.).
+      responses:
+        '200':
+          description: Listado de tipos de prestadores obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TipoPrestador'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/gastronomia-categorias:
+    get:
+      tags:
+        - Gastronomía
+      summary: Listar categorías gastronómicas
+      description: Devuelve las tipologías de establecimientos gastronómicos (restaurantes, bares, peñas folclóricas, confiterías).
+      responses:
+        '200':
+          description: Listado de categorías gastronómicas obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategoriaGastronomia'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/idiomas:
+    get:
+      tags:
+        - Contenido Institucional
+      summary: Listar idiomas disponibles
+      description: Devuelve los idiomas en los que se encuentra redactado el contenido institucional y artículos.
+      responses:
+        '200':
+          description: Listado de idiomas obtenido correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Idioma'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 4. EVENTOS
+  # ==========================================
+  /api/v1/eventos:
+    get:
+      tags:
+        - Eventos
+      summary: Listar eventos turísticos y culturales
+      description: |
+        Consulta el listado dinámico de eventos provinciales con soporte de filtros por rango de fechas, localidad, categorías y búsqueda textual libre.
+        El campo `telefonos` es normalizado como array nativo de cadenas.
+      parameters:
+        - $ref: '#/components/parameters/ParamDesde'
+        - $ref: '#/components/parameters/ParamHasta'
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamCategoria'
+        - $ref: '#/components/parameters/ParamSubcategoria'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de eventos filtrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Evento'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/evento-detalle/{codigo}:
+    get:
+      tags:
+        - Eventos
+      summary: Obtener detalle completo de un evento
+      description: Devuelve la ficha completa de un evento mediante su identificador hash de 32 caracteres.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha de detalle del evento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Evento'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/eventos/{codigo}:
+    get:
+      tags:
+        - Eventos
+      summary: Obtener detalle de evento (Ruta REST canónica)
+      description: Ruta equivalente y compatible para consultar la ficha individual de un evento.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha de detalle del evento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Evento'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 5. HOTELES / ALOJAMIENTOS
+  # ==========================================
+  /api/v1/hoteles:
+    get:
+      tags:
+        - Hoteles
+      summary: Listar hoteles y alojamientos
+      description: |
+        Consulta hoteles y alojamientos filtrados por localidad, categoría y búsqueda por nombre.
+        Los campos `telefonos` y `servicios` son automáticamente transformados a listas JSON nativas.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamCategoria'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de alojamientos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Hotel'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/hotel-detalle/{codigo}:
+    get:
+      tags:
+        - Hoteles
+      summary: Obtener detalle completo de un hotel
+      description: Devuelve la ficha exhaustiva de un hotel o alojamiento por su código de 32 caracteres.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del hotel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Hotel'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 6. PRESTADORES DE SERVICIOS
+  # ==========================================
+  /api/v1/prestadores:
+    get:
+      tags:
+        - Prestadores
+      summary: Listar prestadores turísticos
+      description: Consulta prestadores habilitados de actividades y servicios turísticos.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamTipo'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de prestadores turísticos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prestador'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/prestador-detalle/{codigo}:
+    get:
+      tags:
+        - Prestadores
+      summary: Obtener detalle de un prestador
+      description: Devuelve la ficha individual de un prestador de servicios turísticos.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del prestador
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prestador'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 7. DESTINOS TURÍSTICOS
+  # ==========================================
+  /api/v1/destinos:
+    get:
+      tags:
+        - Destinos
+      summary: Listar atractivos y destinos turísticos
+      description: Consulta atractivos turísticos filtrables por localidad, circuito o categoría.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamCircuito'
+        - $ref: '#/components/parameters/ParamCategoriaNombre'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de atractivos y destinos turísticos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Destino'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/destino-detalle/{codigo}:
+    get:
+      tags:
+        - Destinos
+      summary: Obtener detalle de un destino
+      description: Devuelve la ficha completa de un atractivo o destino turístico.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del destino
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Destino'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 8. GASTRONOMÍA
+  # ==========================================
+  /api/v1/gastronomia:
+    get:
+      tags:
+        - Gastronomía
+      summary: Listar establecimientos gastronómicos
+      description: Consulta restaurantes, bares y peñas folclóricas. Permite filtrar por localidad, categoría y el sello distintivo `tucmesa`.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamCategoria'
+        - $ref: '#/components/parameters/ParamTucmesa'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de locales gastronómicos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Gastronomia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/gastronomia-detalle/{codigo}:
+    get:
+      tags:
+        - Gastronomía
+      summary: Obtener detalle de un local gastronómico
+      description: Devuelve la información completa de un local gastronómico.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual de gastronomía
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Gastronomia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 9. AGENCIAS DE VIAJES
+  # ==========================================
+  /api/v1/agencias:
+    get:
+      tags:
+        - Agencias
+      summary: Listar agencias de viajes
+      description: Consulta las agencias oficiales y autorizadas de viajes y turismo.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de agencias de turismo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agencia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agencia-detalle/{codigo}:
+    get:
+      tags:
+        - Agencias
+      summary: Obtener detalle de una agencia
+      description: Devuelve la ficha completa de una agencia de viajes.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual de la agencia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agencia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 10. GUÍAS DE TURISMO
+  # ==========================================
+  /api/v1/guias:
+    get:
+      tags:
+        - Guías
+      summary: Listar guías de turismo
+      description: Consulta el registro de guías profesionales y habilitados.
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de guías de turismo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Guia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/guia-detalle/{codigo}:
+    get:
+      tags:
+        - Guías
+      summary: Obtener detalle de un guía
+      description: Devuelve la ficha individual de un profesional guía de turismo.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del guía
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Guia'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 11. CONTENIDO INSTITUCIONAL
+  # ==========================================
+  /api/v1/secciones:
+    get:
+      tags:
+        - Contenido Institucional
+      summary: Listar secciones institucionales
+      description: Devuelve las secciones principales del portal institucional.
+      parameters:
+        - $ref: '#/components/parameters/ParamIdioma'
+      responses:
+        '200':
+          description: Colección de secciones institucionales
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/subsecciones:
+    get:
+      tags:
+        - Contenido Institucional
+      summary: Listar subsecciones institucionales
+      description: Devuelve las subsecciones dependientes de una sección o idioma específico.
+      parameters:
+        - $ref: '#/components/parameters/ParamSeccion'
+        - $ref: '#/components/parameters/ParamIdioma'
+      responses:
+        '200':
+          description: Colección de subsecciones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subseccion'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/articulos:
+    get:
+      tags:
+        - Contenido Institucional
+      summary: Listar artículos y noticias
+      description: Consulta artículos informativos, publicaciones de prensa y contenidos destacados.
+      parameters:
+        - $ref: '#/components/parameters/ParamSeccion'
+        - $ref: '#/components/parameters/ParamSubseccion'
+        - $ref: '#/components/parameters/ParamIdioma'
+        - $ref: '#/components/parameters/ParamDestacado'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de artículos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Articulo'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/articulo-detalle/{codigo}:
+    get:
+      tags:
+        - Contenido Institucional
+      summary: Obtener detalle de un artículo
+      description: Devuelve el cuerpo completo y metadatos de un artículo por su código.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del artículo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Articulo'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ==========================================
+  # 12. LUGARES DE INTERÉS TURÍSTICO
+  # ==========================================
+  /api/v1/lugares:
+    get:
+      tags:
+        - Lugares
+      summary: Listar lugares de interés turístico
+      description: |
+        Consulta lugares turísticos con filtros por localidad y circuito.
+        **Nota Especial**: Este endpoint añade automáticamente a cada registro el campo canónico `urlDetalle` (`/api/v1/lugares/{codigo}`).
+      parameters:
+        - $ref: '#/components/parameters/ParamLocalidad'
+        - $ref: '#/components/parameters/ParamCircuito'
+        - $ref: '#/components/parameters/ParamBusqueda'
+        - $ref: '#/components/parameters/ParamLimite'
+        - $ref: '#/components/parameters/ParamOffset'
+      responses:
+        '200':
+          description: Colección de lugares de interés con urlDetalle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lugar'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/lugar-detalle/{codigo}:
+    get:
+      tags:
+        - Lugares
+      summary: Obtener detalle de un lugar
+      description: Devuelve la ficha completa de un punto de interés o lugar turístico.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del lugar turístico
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lugar'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/lugares/{codigo}:
+    get:
+      tags:
+        - Lugares
+      summary: Obtener detalle de un lugar (Ruta REST canónica)
+      description: Endpoint REST canónico referenciado por el campo `urlDetalle` de cada lugar turístico.
+      parameters:
+        - $ref: '#/components/parameters/ParamCodigoPath'
+      responses:
+        '200':
+          description: Ficha individual del lugar turístico
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lugar'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ==========================================
+# COMPONENTES Y ESQUEMAS REUTILIZABLES
+# ==========================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT firmado obtenido a través del endpoint `/api/auth/login`.
+        Debe enviarse en la cabecera HTTP: `Authorization: Bearer <TOKEN>`
+
+  # ----------------------------------------
+  # PARÁMETROS REUTILIZABLES
+  # ----------------------------------------
+  parameters:
+    ParamCodigoPath:
+      name: codigo
+      in: path
+      required: true
+      description: Código único hash hexadecimal de 32 caracteres que identifica al registro.
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "5691531ac558866c93472e22d0e983c4"
+
+    ParamLocalidad:
+      name: localidad
+      in: query
+      required: false
+      description: Código hash de 32 caracteres de la localidad (Alias legible de `p_codigo_localidad`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "07d306e4eb6931d332b76fd169a70beb"
+
+    ParamCategoria:
+      name: categoria
+      in: query
+      required: false
+      description: Código hash de 32 caracteres de la categoría (Alias legible de `p_codigo_categoria`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "e5d26a1b0c9f8a7e6d5c4b3a2f1e0d9c"
+
+    ParamCategoriaNombre:
+      name: categoria
+      in: query
+      required: false
+      description: Nombre o texto de la categoría de destino (Alias de `p_categoria`, máx. 100 caracteres).
+      schema:
+        type: string
+        maxLength: 100
+        example: "Sitio Arqueológico"
+
+    ParamSubcategoria:
+      name: subcategoria
+      in: query
+      required: false
+      description: Código hash de 32 caracteres de la subcategoría (Alias legible de `p_codigo_subcategoria`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+
+    ParamCircuito:
+      name: circuito
+      in: query
+      required: false
+      description: Código hash de 32 caracteres del circuito turístico (Alias de `p_codigo_circuito`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "6c2d9a6c7613589b4f9119f97d544ff2"
+
+    ParamTipo:
+      name: tipo
+      in: query
+      required: false
+      description: Código hash de 32 caracteres del tipo de prestador (Alias de `p_codigo_tipo`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c"
+
+    ParamIdioma:
+      name: idioma
+      in: query
+      required: false
+      description: Código hash de 32 caracteres del idioma (Alias de `p_codigo_idioma`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d"
+
+    ParamSeccion:
+      name: seccion
+      in: query
+      required: false
+      description: Código hash de 32 caracteres de la sección institucional (Alias de `p_codigo_seccion`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "ef1234567890abcdef1234567890abcd"
+
+    ParamSubseccion:
+      name: subseccion
+      in: query
+      required: false
+      description: Código hash de 32 caracteres de la subsección (Alias de `p_codigo_subseccion`).
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 32
+        pattern: '^[a-f0-9]{32}$'
+        example: "f1234567890abcdef1234567890abcde"
+
+    ParamDesde:
+      name: desde
+      in: query
+      required: false
+      description: Fecha de inicio de eventos en formato ISO `YYYY-MM-DD` (Alias de `p_desde`).
+      schema:
+        type: string
+        format: date
+        example: "2026-09-01"
+
+    ParamHasta:
+      name: hasta
+      in: query
+      required: false
+      description: Fecha límite o de fin de eventos en formato ISO `YYYY-MM-DD` (Alias de `p_hasta`).
+      schema:
+        type: string
+        format: date
+        example: "2026-09-30"
+
+    ParamTucmesa:
+      name: tucmesa
+      in: query
+      required: false
+      description: Filtro booleano para gastronomía adherida al programa TucMesa (1 = Adherido, 0 = No adherido).
+      schema:
+        type: integer
+        enum: [0, 1]
+        example: 1
+
+    ParamDestacado:
+      name: destacado
+      in: query
+      required: false
+      description: Filtro para artículos destacados en portada (1 = Destacado, 0 = Estándar).
+      schema:
+        type: integer
+        enum: [0, 1]
+        example: 1
+
+    ParamBusqueda:
+      name: busqueda
+      in: query
+      required: false
+      description: Búsqueda libre por coincidencia de texto (Alias de `p_busqueda`, máximo 150 caracteres).
+      schema:
+        type: string
+        maxLength: 150
+        example: "Tafi"
+
+    ParamLimite:
+      name: limite
+      in: query
+      required: false
+      description: Cantidad máxima de registros a retornar por página (Alias de `p_limit`, predeterminado 50).
+      schema:
+        type: integer
+        minimum: 1
+        default: 50
+        example: 10
+
+    ParamOffset:
+      name: offset
+      in: query
+      required: false
+      description: Salto o desplazamiento inicial de registros para paginación (Alias de `p_offset`, predeterminado 0).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+
+  # ----------------------------------------
+  # RESPUESTAS COMUNES
+  # ----------------------------------------
+  responses:
+    BadRequestError:
+      description: Error de validación o conflicto entre aliases y parámetros canónicos
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ErrorValidationResponse'
+              - $ref: '#/components/schemas/ErrorConflictResponse'
+
+    NotFoundError:
+      description: Endpoint o recurso no encontrado en el sistema
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorNotFoundResponse'
+
+    InternalServerError:
+      description: Error no controlado en la ejecución o fallo interno de infraestructura
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorInternalServerResponse'
+
+  # ----------------------------------------
+  # MODELOS Y ESQUEMAS DE DATOS
+  # ----------------------------------------
+  schemas:
+    # --- Health & Auth ---
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - runtime
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: "online"
+        runtime:
+          type: string
+          example: "PHP 7.4.33"
+        timestamp:
+          type: integer
+          description: Marca temporal Unix en milisegundos
+          example: 1790724493649
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@local.com"
+        password:
+          type: string
+          format: password
+          example: "123456"
+
+    LoginSuccessResponse:
+      type: object
+      required:
+        - success
+        - message
+        - token
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Autenticación exitosa"
+        token:
+          type: string
+          description: Token JWT con firma criptográfica HMAC-SHA256
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImVtYWlsIjoiYWRtaW5AbG9jYWwuY29tIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzkwNzI4MDkzfQ..."
+
+    UserProfileResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Acceso autorizado al perfil"
+        data:
+          type: object
+          required:
+            - sub
+            - email
+            - role
+            - exp
+          properties:
+            sub:
+              type: string
+              example: "user_123"
+            email:
+              type: string
+              example: "admin@local.com"
+            role:
+              type: string
+              example: "admin"
+            exp:
+              type: integer
+              description: Marca de expiración Unix del token
+              example: 1790728093
+
+    # --- Catálogos ---
+    Localidad:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "07d306e4eb6931d332b76fd169a70beb"
+        nombre:
+          type: string
+          example: "San Miguel de Tucumán"
+        codigo_postal:
+          type: string
+          example: "4000"
+
+    Circuito:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "6c2d9a6c7613589b4f9119f97d544ff2"
+        nombre:
+          type: string
+          example: "Circuito Las Yungas"
+        descripcion:
+          type: string
+          example: "Recorrido turístico por la selva subtropical de montaña"
+
+    CategoriaHotel:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "b3f07a2a0e41712a4a7541249e0c5d64"
+        nombre:
+          type: string
+          example: "4 Estrellas"
+
+    CategoriaEvento:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "e5d26a1b0c9f8a7e6d5c4b3a2f1e0d9c"
+        nombre:
+          type: string
+          example: "Festivales y Tradición"
+
+    SubcategoriaEvento:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+        nombre:
+          type: string
+          example: "Música en Vivo"
+        codigo_categoria:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "e5d26a1b0c9f8a7e6d5c4b3a2f1e0d9c"
+
+    TipoPrestador:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c"
+        nombre:
+          type: string
+          example: "Turismo Activo y Aventura"
+
+    CategoriaGastronomia:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d"
+        nombre:
+          type: string
+          example: "Restaurantes Tradicionales"
+
+    Idioma:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d"
+        nombre:
+          type: string
+          example: "Español"
+        sigla:
+          type: string
+          example: "ES"
+
+    # --- Recursos Dinámicos Principales ---
+    Evento:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "dfd70d751776933da89c486ea1bee7eb"
+        nombre:
+          type: string
+          example: "Fiesta Nacional de la Empanada"
+        descripcion:
+          type: string
+          example: "Encuentro tradicional con gastronomía típica regional y espectáculos folclóricos"
+        fecha_inicio:
+          type: string
+          format: date
+          example: "2026-09-10"
+        fecha_fin:
+          type: string
+          format: date
+          example: "2026-09-12"
+        horario:
+          type: string
+          example: "20:00 hs"
+        lugar:
+          type: string
+          example: "Predio Ferial Famaillá"
+        localidad:
+          type: string
+          example: "Famaillá"
+        codigo_localidad:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "07d306e4eb6931d332b76fd169a70beb"
+        categoria:
+          type: string
+          example: "Gastronómico y Cultural"
+        codigo_categoria:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "e5d26a1b0c9f8a7e6d5c4b3a2f1e0d9c"
+        telefonos:
+          type: array
+          description: Lista JSON nativa normalizada automáticamente
+          items:
+            type: string
+          example:
+            - "+54 381 4567890"
+
+    Hotel:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "5691531ac558866c93472e22d0e983c4"
+        nombre:
+          type: string
+          example: "Hotel Premier"
+        categoria:
+          type: string
+          example: "4 Estrellas"
+        localidad:
+          type: string
+          example: "San Miguel de Tucumán"
+        codigo_localidad:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "07d306e4eb6931d332b76fd169a70beb"
+        direccion:
+          type: string
+          example: "Av. Soldati 330"
+        telefonos:
+          type: array
+          description: Lista de teléfonos transformados desde cadenas separadas por coma
+          items:
+            type: string
+          example:
+            - "381-4310381"
+            - "381-4310382"
+        servicios:
+          type: array
+          description: Lista de comodidades y servicios ofrecidos
+          items:
+            type: string
+          example:
+            - "Desayuno"
+            - "Wi-Fi"
+            - "Estacionamiento"
+            - "Piscina"
+        email:
+          type: string
+          format: email
+          example: "reservas@hotelpremier.com"
+        web:
+          type: string
+          format: uri
+          example: "https://www.hotelpremier.com"
+        latitud:
+          type: number
+          format: float
+          example: -26.83012
+        longitud:
+          type: number
+          format: float
+          example: -65.19543
+
+    Prestador:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+        nombre:
+          type: string
+          example: "Tucumán Aventura Extrema"
+        tipo:
+          type: string
+          example: "Turismo Aventura"
+        localidad:
+          type: string
+          example: "Tafí del Valle"
+        direccion:
+          type: string
+          example: "Ruta 307 Km 60"
+        telefonos:
+          type: array
+          items:
+            type: string
+          example:
+            - "+54 381 5551234"
+        servicios:
+          type: array
+          items:
+            type: string
+          example:
+            - "Cabalgatas"
+            - "Trekking"
+            - "Kayak"
+
+    Destino:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1"
+        nombre:
+          type: string
+          example: "Ruinas de Quilmes"
+        categoria:
+          type: string
+          example: "Sitio Arqueológico"
+        circuito:
+          type: string
+          example: "Valles Calchaquíes"
+        localidad:
+          type: string
+          example: "Amaicha del Valle"
+        descripcion:
+          type: string
+          example: "Asentamiento arqueológico indígena más extenso de la República Argentina"
+
+    Gastronomia:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "c3d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2"
+        nombre:
+          type: string
+          example: "La Casona de Tafí"
+        categoria:
+          type: string
+          example: "Restaurante Regional"
+        localidad:
+          type: string
+          example: "Tafí del Valle"
+        direccion:
+          type: string
+          example: "Av. Principal 123"
+        tucmesa:
+          type: integer
+          enum: [0, 1]
+          description: Indicador de adhesión al programa de fomento gastronómico provincial TucMesa
+          example: 1
+        telefonos:
+          type: array
+          items:
+            type: string
+          example:
+            - "381-4911222"
+        servicios:
+          type: array
+          items:
+            type: string
+          example:
+            - "Comidas regionales"
+            - "Vinos de altura"
+            - "Patio exterior"
+
+    Agencia:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "d4e5f6a7b8c9d0e1f2a3b4c5d6a1b2c3"
+        nombre:
+          type: string
+          example: "Norte Rutas y Excursiones"
+        localidad:
+          type: string
+          example: "San Miguel de Tucumán"
+        direccion:
+          type: string
+          example: "San Martín 450"
+        telefonos:
+          type: array
+          items:
+            type: string
+          example:
+            - "381-4223344"
+
+    Guia:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "e5f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4"
+        nombre:
+          type: string
+          example: "Juan Carlos Gómez"
+        localidad:
+          type: string
+          example: "Yerba Buena"
+        idiomas:
+          type: string
+          example: "Español, Inglés, Francés"
+        telefonos:
+          type: array
+          items:
+            type: string
+          example:
+            - "381-6789012"
+
+    Seccion:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5"
+        nombre:
+          type: string
+          example: "Institucional"
+        idioma:
+          type: string
+          example: "Español"
+
+    Subseccion:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6"
+        nombre:
+          type: string
+          example: "Autoridades y Directorio"
+        codigo_seccion:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5"
+
+    Articulo:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6a7"
+        titulo:
+          type: string
+          example: "Tucumán impulsa su oferta turística para la temporada de verano"
+        contenido:
+          type: string
+          example: "<p>Presentación de nuevos circuitos turísticos y hotelería de primer nivel...</p>"
+        destacado:
+          type: integer
+          enum: [0, 1]
+          example: 1
+        codigo_seccion:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "f6a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5"
+        codigo_subseccion:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "a7b8c9d0e1f2a3b4c5d6a1b2c3d4e5f6"
+        idioma:
+          type: string
+          example: "Español"
+
+    Lugar:
+      type: object
+      properties:
+        codigo:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          example: "a4ed0bea47d0cd96036d047e06f662d7"
+        nombre:
+          type: string
+          example: "Cerro San Javier"
+        localidad:
+          type: string
+          example: "San Javier"
+        circuito:
+          type: string
+          example: "Circuito Las Yungas"
+        descripcion:
+          type: string
+          example: "Mirador panorámico emblemático con el Cristo Bendicente"
+        urlDetalle:
+          type: string
+          description: Ruta canónica inyectada dinámicamente por el controlador hacia la ficha del lugar
+          example: "/api/v1/lugares/a4ed0bea47d0cd96036d047e06f662d7"
+
+    # --- Modelos de Error Estandarizados ---
+    ErrorAuthBadRequest:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Credenciales incompletas"
+
+    ErrorAuthUnauthorized:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Credenciales inválidas"
+
+    ErrorValidationResponse:
+      type: object
+      required:
+        - error
+        - details
+      properties:
+        error:
+          type: string
+          example: "Parámetros de consulta inválidos"
+        details:
+          type: object
+          description: Diccionario asociativo donde la clave es el parámetro y el valor es la lista de mensajes de validación fallidos
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            p_codigo_localidad:
+              - "El campo p_codigo_localidad debe tener exactamente 32 caracteres."
+            p_limit:
+              - "El campo p_limit debe contener solo dígitos numéricos."
+
+    ErrorConflictResponse:
+      type: object
+      required:
+        - error
+        - details
+      properties:
+        error:
+          type: string
+          example: "Parámetros de consulta en conflicto"
+        details:
+          type: object
+          required:
+            - alias
+            - parameter
+          properties:
+            alias:
+              type: string
+              example: "localidad"
+            parameter:
+              type: string
+              example: "p_codigo_localidad"
+
+    ErrorUnauthorizedResponse:
+      type: object
+      required:
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Token no proporcionado o formato inválido"
+
+    ErrorForbiddenResponse:
+      type: object
+      required:
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Token inválido o expirado"
+
+    ErrorNotFoundResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Endpoint no encontrado"
+
+    ErrorInternalServerResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Error interno del servidor"

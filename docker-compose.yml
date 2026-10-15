@@ -1,0 +1,11 @@
+services:
+  mcp-turismo:
+    build: .
+    container_name: mcp-node-turismo
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - TURISMO_API_URL=http://api.tucumanturismo.gob.ar
+      - MCP_TRANSPORT=http
