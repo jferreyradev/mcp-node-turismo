@@ -16,10 +16,14 @@ export function createTurismoMcpServer() {
   // 1. Registrar Herramientas (Tools)
   registerTools(server);
 
-  // 2. Registrar Recursos (Resources)
-  server.resource(
+  // 2. Registrar Recursos (Resources) usando la API moderna registerResource
+  server.registerResource(
     'localidades',
     'turismo://localidades',
+    {
+      description: 'Catálogo de las 58 localidades oficiales de Tucumán',
+      mimeType: 'application/json'
+    },
     async (uri) => ({
       contents: [{
         uri: uri.href,
@@ -32,9 +36,13 @@ export function createTurismoMcpServer() {
     })
   );
 
-  server.resource(
+  server.registerResource(
     'circuitos',
     'turismo://circuitos',
+    {
+      description: 'Catálogo de circuitos turísticos oficiales de Tucumán',
+      mimeType: 'application/json'
+    },
     async (uri) => ({
       contents: [{
         uri: uri.href,
@@ -47,9 +55,13 @@ export function createTurismoMcpServer() {
     })
   );
 
-  server.resource(
+  server.registerResource(
     'recursos',
     'turismo://recursos',
+    {
+      description: 'Catálogo de los 28 recursos dinámicos disponibles en la API',
+      mimeType: 'application/json'
+    },
     async (uri) => ({
       contents: [{
         uri: uri.href,
@@ -62,13 +74,15 @@ export function createTurismoMcpServer() {
     })
   );
 
-  // 3. Registrar Plantillas de Prompts
-  server.prompt(
+  // 3. Registrar Plantillas de Prompts usando registerPrompt
+  server.registerPrompt(
     'planificar_itinerario',
-    'Genera una recomendación de itinerario turístico personalizado para Tucumán consultando lugares y gastronomía oficiales.',
     {
-      destino: z.string().describe('Localidad o circuito turístico (ej: "Tafí del Valle", "San Javier", "Yungas").'),
-      dias: z.string().optional().describe('Cantidad de días de estadía (ej: "2 días", "fin de semana").')
+      description: 'Genera una recomendación de itinerario turístico personalizado para Tucumán consultando lugares y gastronomía oficiales.',
+      argsSchema: {
+        destino: z.string().describe('Localidad o circuito turístico (ej: "Tafí del Valle", "San Javier", "Yungas").'),
+        dias: z.string().optional().describe('Cantidad de días de estadía (ej: "2 días", "fin de semana").')
+      }
     },
     ({ destino, dias }) => ({
       messages: [{
@@ -81,12 +95,14 @@ export function createTurismoMcpServer() {
     })
   );
 
-  server.prompt(
+  server.registerPrompt(
     'buscar_actividades',
-    'Busca eventos culturales, ferias o festividades en una localidad específica para una fecha determinada.',
     {
-      localidad: z.string().describe('Localidad a consultar (ej: "Aguilares", "San Miguel de Tucumán", "Monteros").'),
-      fecha: z.string().optional().describe('Fecha o período estimado (ej: "2026-10-15").')
+      description: 'Busca eventos culturales, ferias o festividades en una localidad específica para una fecha determinada.',
+      argsSchema: {
+        localidad: z.string().describe('Localidad a consultar (ej: "Aguilares", "San Miguel de Tucumán", "Monteros").'),
+        fecha: z.string().optional().describe('Fecha o período estimado (ej: "2026-10-15").')
+      }
     },
     ({ localidad, fecha }) => ({
       messages: [{

@@ -63,11 +63,13 @@ async function executeAndLog(toolName, args, executeFn) {
 
 export function registerTools(server) {
   // 1. Healthcheck
-  server.tool(
+  server.registerTool(
     'turismo_health',
-    'Verifica el estado del servicio y el runtime de la API de Turismo (Healthcheck). Retorna status (online), versión de PHP activa y timestamp.',
     {
-      base_url: z.string().optional().describe('URL base opcional de la API (ej: "http://api.tucumanturismo.gob.ar" o "http://localhost:8000").')
+      description: 'Verifica el estado del servicio y el runtime de la API de Turismo (Healthcheck). Retorna status (online), versión de PHP activa y timestamp.',
+      inputSchema: {
+        base_url: z.string().optional().describe('URL base opcional de la API (ej: "http://api.tucumanturismo.gob.ar" o "http://localhost:8000").')
+      }
     },
     async ({ base_url }) => {
       return executeAndLog('turismo_health', { base_url }, async () => {
@@ -78,13 +80,15 @@ export function registerTools(server) {
   );
 
   // 2. Login
-  server.tool(
+  server.registerTool(
     'turismo_login',
-    'Autentica credenciales en la API de Turismo y obtiene un token Bearer JWT para consultas protegidas.',
     {
-      email: z.string().describe('Email del usuario para iniciar sesión.'),
-      password: z.string().describe('Contraseña del usuario.'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Autentica credenciales en la API de Turismo y obtiene un token Bearer JWT para consultas protegidas.',
+      inputSchema: {
+        email: z.string().describe('Email del usuario para iniciar sesión.'),
+        password: z.string().describe('Contraseña del usuario.'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async ({ email, password, base_url }) => {
       return executeAndLog('turismo_login', { email, base_url }, async () => {
@@ -98,13 +102,15 @@ export function registerTools(server) {
   );
 
   // 3. Catálogo de Circuitos
-  server.tool(
+  server.registerTool(
     'turismo_get_circuitos',
-    'Obtiene la lista completa de circuitos turísticos oficiales disponibles en MariaDB.',
     {
-      q: z.string().optional().describe('Filtro opcional de texto para buscar circuitos por nombre.'),
-      campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "codigo,nombre").'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Obtiene la lista completa de circuitos turísticos oficiales disponibles en MariaDB.',
+      inputSchema: {
+        q: z.string().optional().describe('Filtro opcional de texto para buscar circuitos por nombre.'),
+        campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "codigo,nombre").'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async ({ q, campos, base_url }) => {
       return executeAndLog('turismo_get_circuitos', { q, campos, base_url }, async () => {
@@ -122,22 +128,24 @@ export function registerTools(server) {
   );
 
   // 4. Catálogo y Detalle de Eventos
-  server.tool(
+  server.registerTool(
     'turismo_get_eventos',
-    'Lista eventos turísticos con filtros opcionales de fechas, localidad, categoría, búsqueda de texto y paginación, o consulta el detalle de un evento por código.',
     {
-      codigo: z.string().optional().describe('Código de 32 caracteres para obtener el detalle de un evento específico.'),
-      id: z.string().optional().describe('Alias de código de evento.'),
-      desde: z.string().optional().describe('Fecha inicio en formato YYYY-MM-DD.'),
-      hasta: z.string().optional().describe('Fecha fin en formato YYYY-MM-DD.'),
-      localidad: z.string().optional().describe('Nombre de localidad (ej: "Aguilares", "Tafí del Valle", "capital") o código hash MD5.'),
-      categoria: z.string().optional().describe('Código de categoría temática.'),
-      busqueda: z.string().optional().describe('Texto para buscar en títulos o descripciones.'),
-      limite: z.number().int().optional().describe('Cantidad máxima de registros a retornar (por defecto 5 para agentes de IA).'),
-      offset: z.number().int().optional().describe('Desplazamiento inicial para paginación.'),
-      campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,localidad,fecha_inicio").'),
-      incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Lista eventos turísticos con filtros opcionales de fechas, localidad, categoría, búsqueda de texto y paginación, o consulta el detalle de un evento por código.',
+      inputSchema: {
+        codigo: z.string().optional().describe('Código de 32 caracteres para obtener el detalle de un evento específico.'),
+        id: z.string().optional().describe('Alias de código de evento.'),
+        desde: z.string().optional().describe('Fecha inicio en formato YYYY-MM-DD.'),
+        hasta: z.string().optional().describe('Fecha fin en formato YYYY-MM-DD.'),
+        localidad: z.string().optional().describe('Nombre de localidad (ej: "Aguilares", "Tafí del Valle", "capital") o código hash MD5.'),
+        categoria: z.string().optional().describe('Código de categoría temática.'),
+        busqueda: z.string().optional().describe('Texto para buscar en títulos o descripciones.'),
+        limite: z.number().int().optional().describe('Cantidad máxima de registros a retornar (por defecto 5 para agentes de IA).'),
+        offset: z.number().int().optional().describe('Desplazamiento inicial para paginación.'),
+        campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,localidad,fecha_inicio").'),
+        incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async (args) => {
       return executeAndLog('turismo_get_eventos', args, async () => {
@@ -173,20 +181,22 @@ export function registerTools(server) {
   );
 
   // 5. Catálogo y Detalle de Lugares Turísticos
-  server.tool(
+  server.registerTool(
     'turismo_get_lugares',
-    'Lista lugares turísticos con filtros opcionales de circuito, localidad, búsqueda y paginación, o consulta el detalle de un lugar por código.',
     {
-      codigo: z.string().optional().describe('Código de 32 caracteres para obtener el detalle de un lugar turístico específico.'),
-      id: z.string().optional().describe('Alias de código de lugar.'),
-      circuito: z.string().optional().describe('Nombre del circuito turístico (ej: "Valles Calchaquies", "Yungas", "Sur") o hash MD5.'),
-      localidad: z.string().optional().describe('Nombre de localidad (ej: "San Javier", "El Cadillal") o hash MD5.'),
-      busqueda: z.string().optional().describe('Término de búsqueda de texto en títulos o descripciones.'),
-      limite: z.number().int().optional().describe('Cantidad máxima de registros a retornar (por defecto 5).'),
-      offset: z.number().int().optional().describe('Desplazamiento para paginación.'),
-      campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,localidad,direccion").'),
-      incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Lista lugares turísticos con filtros opcionales de circuito, localidad, búsqueda y paginación, o consulta el detalle de un lugar por código.',
+      inputSchema: {
+        codigo: z.string().optional().describe('Código de 32 caracteres para obtener el detalle de un lugar turístico específico.'),
+        id: z.string().optional().describe('Alias de código de lugar.'),
+        circuito: z.string().optional().describe('Nombre del circuito turístico (ej: "Valles Calchaquies", "Yungas", "Sur") o hash MD5.'),
+        localidad: z.string().optional().describe('Nombre de localidad (ej: "San Javier", "El Cadillal") o hash MD5.'),
+        busqueda: z.string().optional().describe('Término de búsqueda de texto en títulos o descripciones.'),
+        limite: z.number().int().optional().describe('Cantidad máxima de registros a retornar (por defecto 5).'),
+        offset: z.number().int().optional().describe('Desplazamiento para paginación.'),
+        campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,localidad,direccion").'),
+        incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async (args) => {
       return executeAndLog('turismo_get_lugares', args, async () => {
@@ -225,17 +235,19 @@ export function registerTools(server) {
   );
 
   // 6. Consulta Genérica de Recursos Dinámicos (28 recursos)
-  server.tool(
+  server.registerTool(
     'turismo_get_recurso',
-    'Consulta genérica a cualquiera de los 28 recursos dinámicos de la API (hoteles, prestadores, gastronomia, destinos, localidades, articulos, agencias, guias, etc.). Resuelve automáticamente sinónimos en lenguaje natural.',
     {
-      recurso: z.string().describe('Nombre del recurso (ej: "hoteles", "gastronomia", "prestadores", "destinos", "agencias", "guias", "articulos", "localidades"). Acepta sinónimos como "restaurantes", "alojamiento", "noticias".'),
-      codigo: z.string().optional().describe('Código opcional para consultar el detalle de un recurso específico.'),
-      id: z.string().optional().describe('Alias de código.'),
-      filtros: z.record(z.string(), z.any()).optional().describe('Parámetros clave-valor de filtro (ej: {"localidad": "Yerba Buena", "limite": 5}).'),
-      campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,direccion,telefono").'),
-      incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Consulta genérica a cualquiera de los 28 recursos dinámicos de la API (hoteles, prestadores, gastronomia, destinos, localidades, articulos, agencias, guias, etc.). Resuelve automáticamente sinónimos en lenguaje natural.',
+      inputSchema: {
+        recurso: z.string().describe('Nombre del recurso (ej: "hoteles", "gastronomia", "prestadores", "destinos", "agencias", "guias", "articulos", "localidades"). Acepta sinónimos como "restaurantes", "alojamiento", "noticias".'),
+        codigo: z.string().optional().describe('Código opcional para consultar el detalle de un recurso específico.'),
+        id: z.string().optional().describe('Alias de código.'),
+        filtros: z.record(z.string(), z.any()).optional().describe('Parámetros clave-valor de filtro (ej: {"localidad": "Yerba Buena", "limite": 5}).'),
+        campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,direccion,telefono").'),
+        incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async (args) => {
       return executeAndLog('turismo_get_recurso', args, async () => {
@@ -280,12 +292,14 @@ export function registerTools(server) {
   );
 
   // 7. Perfil de Usuario Protegido
-  server.tool(
+  server.registerTool(
     'turismo_get_perfil',
-    'Consulta el endpoint protegido de perfil de usuario mediante un token Bearer JWT obtenido en turismo_login.',
     {
-      token: z.string().describe('Token JWT recibido previamente en turismo_login.'),
-      base_url: z.string().optional().describe('URL base opcional de la API.')
+      description: 'Consulta el endpoint protegido de perfil de usuario mediante un token Bearer JWT obtenido en turismo_login.',
+      inputSchema: {
+        token: z.string().describe('Token JWT recibido previamente en turismo_login.'),
+        base_url: z.string().optional().describe('URL base opcional de la API.')
+      }
     },
     async ({ token, base_url }) => {
       return executeAndLog('turismo_get_perfil', { base_url }, async () => {
