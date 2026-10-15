@@ -194,31 +194,31 @@ El repositorio incluye un `Dockerfile` optimizado y un `docker-compose.yml`:
 
 ### Conectar Clientes al Servidor Remoto
 
-Una vez que tu servidor esté corriendo (ejemplo: `http://tu-servidor.com:3000` o `https://mcp.tudominio.com`):
+Tu servidor ya se encuentra disponible públicamente en internet con HTTPS:
+👉 **URL del Servidor:** `https://mcp-node-turismo.onrender.com/sse`
 
-* **En n8n / Flowise / Dify**:
+* **En n8n / Flowise / Dify (Bots de WhatsApp / Web)**:
   * Tipo de transporte: `Server-Sent Events (SSE)`
-  * URL del servidor: `http://tu-servidor.com:3000/sse`
+  * URL del servidor: `https://mcp-node-turismo.onrender.com/sse`
 
-* **En Cursor / Windsurf desde otra máquina**:
+* **En Cursor / Windsurf**:
   ```json
   {
     "mcpServers": {
-      "turismo-remoto": {
-        "url": "http://tu-servidor.com:3000/sse"
+      "turismo-tucuman": {
+        "url": "https://mcp-node-turismo.onrender.com/sse"
       }
     }
   }
   ```
 
-* **En Claude Desktop desde otra máquina**:
-  Utilizando el puente estándar `mcp-remote`:
+* **En Claude Desktop (usando mcp-remote)**:
   ```json
   {
     "mcpServers": {
-      "turismo": {
+      "turismo-tucuman": {
         "command": "npx",
-        "args": ["-y", "mcp-remote", "http://tu-servidor.com:3000/sse"]
+        "args": ["-y", "mcp-remote", "https://mcp-node-turismo.onrender.com/sse"]
       }
     }
   }
