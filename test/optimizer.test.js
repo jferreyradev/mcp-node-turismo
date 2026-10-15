@@ -8,9 +8,17 @@ import {
   levenshtein,
   compactPayload,
   filterList,
+  getTodayDateArgentina,
   LOCALIDADES,
   CIRCUITOS
 } from '../src/optimizer.js';
+
+test('getTodayDateArgentina devuelve fecha actual en formato ISO YYYY-MM-DD', () => {
+  const dateStr = getTodayDateArgentina();
+  assert.equal(typeof dateStr, 'string');
+  assert.equal(dateStr.length, 10);
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(dateStr), 'Debe coincidir con formato YYYY-MM-DD');
+});
 
 test('normalizeString normaliza correctamente acentos y mayúsculas', () => {
   assert.equal(normalizeString('  Tafí  del   Valle  '), 'tafi del valle');

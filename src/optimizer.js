@@ -10,6 +10,18 @@
 
 export const DEFAULT_AI_LIMIT = 5;
 
+/**
+ * Obtiene la fecha actual en formato ISO (YYYY-MM-DD) según el huso horario oficial de Argentina (UTC-3).
+ */
+export function getTodayDateArgentina() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
 // Diccionario de las 58 localidades oficiales de Tucumán + sinónimos coloquiales
 export const LOCALIDADES = {
   'acheral': '0725c7a10de2ee81516d46662c8d0ad5',

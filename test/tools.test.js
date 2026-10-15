@@ -60,7 +60,7 @@ test('herramienta turismo_get_circuitos ejecuta y procesa datos compactados con 
   }
 });
 
-test('herramienta turismo_get_eventos resuelve localidad y aplica límite por defecto', async () => {
+test('herramienta turismo_get_eventos resuelve localidad, aplica límite y fecha actual por defecto', async () => {
   const server = new McpServer({ name: 'test-server', version: '1.0.0' });
   registerTools(server);
 
@@ -78,12 +78,17 @@ test('herramienta turismo_get_eventos resuelve localidad y aplica límite por de
 
   try {
     const tool = server._registeredTools['turismo_get_eventos'];
-    // Pasamos "aguilare" con typo y sin límite explícito
+    // 1. Sin fecha: debe inyectar la fecha de hoy automáticamente
     await tool.handler({ localidad: 'aguilare' });
 
-    // La URL debe contener el hash de Aguilares y limite=5
     assert.ok(capturedUrl.includes('localidad=bba7bec713fe2322c15323a4f32cbcf4'));
     assert.ok(capturedUrl.includes('limite=5'));
+    assert.ok(/desde=\d{4}-\d{2}-\d{2}/.test(capturedUrl), 'Debe inyectar parámetro desde con fecha actual');
+
+    // 2. Con historicos: true: no debe forzar la fecha actual
+    capturedUrl = '';
+    await tool.handler({ localidad: 'aguilare', historicos: true });
+    assert.ok(!capturedUrl.includes('desde='), 'No debe inyectar desde cuando historicos=true');
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -11,7 +11,8 @@ import {
   resolveCircuit,
   normalizeResourceName,
   compactPayload,
-  filterList
+  filterList,
+  getTodayDateArgentina
 } from './optimizer.js';
 import { logToolCall } from './logger.js';
 
@@ -131,17 +132,18 @@ export function registerTools(server) {
   server.registerTool(
     'turismo_get_eventos',
     {
-      description: 'Lista eventos turísticos con filtros opcionales de fechas, localidad, categoría, búsqueda de texto y paginación, o consulta el detalle de un evento por código.',
+      description: 'Lista eventos turísticos vigentes y futuros (por defecto desde la fecha actual en adelante) con filtros opcionales de fechas, localidad, categoría, búsqueda de texto y paginación, o consulta el detalle de un evento por código. Si se desean eventos pasados, indicar historicos=true.',
       inputSchema: {
         codigo: z.string().optional().describe('Código de 32 caracteres para obtener el detalle de un evento específico.'),
         id: z.string().optional().describe('Alias de código de evento.'),
-        desde: z.string().optional().describe('Fecha inicio en formato YYYY-MM-DD.'),
+        desde: z.string().optional().describe('Fecha inicio en formato YYYY-MM-DD. Si se omite, se utiliza la fecha actual.'),
         hasta: z.string().optional().describe('Fecha fin en formato YYYY-MM-DD.'),
         localidad: z.string().optional().describe('Nombre de localidad (ej: "Aguilares", "Tafí del Valle", "capital") o código hash MD5.'),
         categoria: z.string().optional().describe('Código de categoría temática.'),
         busqueda: z.string().optional().describe('Texto para buscar en títulos o descripciones.'),
         limite: z.number().int().optional().describe('Cantidad máxima de registros a retornar (por defecto 5 para agentes de IA).'),
         offset: z.number().int().optional().describe('Desplazamiento inicial para paginación.'),
+        historicos: z.boolean().optional().describe('Si es true, permite consultar eventos pasados o históricos. Por defecto false (solo eventos desde hoy en adelante).'),
         campos: z.string().optional().describe('Lista de campos requeridos separados por coma (ej: "nombre,localidad,fecha_inicio").'),
         incluir_imagenes: z.boolean().optional().describe('Si es true, incluye URLs de imágenes. Por defecto es false para ahorrar tokens.'),
         base_url: z.string().optional().describe('URL base opcional de la API.')
@@ -150,7 +152,7 @@ export function registerTools(server) {
     async (args) => {
       return executeAndLog('turismo_get_eventos', args, async () => {
         const codigo = args.codigo || args.id;
-        const { codigo: _c, id: _i, base_url, campos, incluir_imagenes, ...rawFilters } = args;
+        const { codigo: _c, id: _i, base_url, campos, incluir_imagenes, historicos, ...rawFilters } = args;
         const filters = { ...rawFilters };
 
         if (filters.localidad) {
@@ -158,6 +160,11 @@ export function registerTools(server) {
         }
         if (!filters.limite && !codigo) {
           filters.limite = DEFAULT_AI_LIMIT;
+        }
+
+        // Por defecto, solo eventos vigentes o futuros a menos que se pidan históricos explícitamente
+        if (!codigo && !filters.desde && !historicos && !filters.historicos) {
+          filters.desde = getTodayDateArgentina();
         }
 
         let res;
@@ -263,6 +270,9 @@ export function registerTools(server) {
         }
         if (!filters.limite && !codigo) {
           filters.limite = DEFAULT_AI_LIMIT;
+        }
+        if (canonicalResource === 'eventos' && !codigo && !filters.desde && !args.historicos && !filters.historicos) {
+          filters.desde = getTodayDateArgentina();
         }
 
         let res;
